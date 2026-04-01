@@ -7,5 +7,7 @@ export function normalizeRestaurantQuery(raw: RestaurantSearchRequest): Normaliz
     budget: raw.budget,
     preferences: (raw.preferences ?? []).map((p) => p.trim().toLowerCase()).filter(Boolean),
     sessionId: raw.sessionId,
+    language: raw.language,
+    currency: raw.currency?.toUpperCase(),
   };
 }

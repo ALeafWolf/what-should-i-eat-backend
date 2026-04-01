@@ -10,12 +10,25 @@ import { TOOL_TIMEOUT_MS, MAX_REVIEW_SNIPPETS_PER_RESTAURANT } from "../../share
 
 const GOOGLE_PLACES_API_BASE = "https://places.googleapis.com/v1";
 
+interface GoogleMoney {
+  currencyCode?: string;
+  units?: string;
+  nanos?: number;
+}
+
+interface GooglePriceRange {
+  startPrice?: GoogleMoney;
+  endPrice?: GoogleMoney;
+}
+
 interface GooglePlaceResult {
   id: string;
   displayName?: { text: string; languageCode: string };
+  primaryTypeDisplayName?: { text: string; languageCode: string };
   rating?: number;
   userRatingCount?: number;
   priceLevel?: string;
+  priceRange?: GooglePriceRange;
   formattedAddress?: string;
   websiteUri?: string;
   googleMapsUri?: string;
@@ -48,6 +61,42 @@ function parsePriceLevel(level: string | undefined): number | undefined {
   return GOOGLE_PRICE_LEVEL[level];
 }
 
+function moneyToNumber(m?: GoogleMoney): number | undefined {
+  if (!m) return undefined;
+  const hasUnits = m.units !== undefined && m.units !== "";
+  const hasNanos = m.nanos !== undefined && m.nanos !== 0;
+  if (!hasUnits && !hasNanos) return undefined;
+  const whole = hasUnits ? Number(m.units) : 0;
+  if (!Number.isFinite(whole)) return undefined;
+  const frac = (m.nanos ?? 0) / 1e9;
+  return whole + frac;
+}
+
+function formatMoneyDisplay(m?: GoogleMoney): string | undefined {
+  if (!m?.currencyCode) return undefined;
+  const amount = moneyToNumber(m);
+  if (amount === undefined) return undefined;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: m.currencyCode,
+      maximumFractionDigits: m.currencyCode === "JPY" || m.currencyCode === "KRW" ? 0 : 2,
+    }).format(amount);
+  } catch {
+    return `${m.currencyCode} ${amount}`;
+  }
+}
+
+function formatPriceRangeFromApi(priceRange?: GooglePriceRange): string | undefined {
+  if (!priceRange) return undefined;
+  const start = formatMoneyDisplay(priceRange.startPrice);
+  const end = formatMoneyDisplay(priceRange.endPrice);
+  if (start && end) return `${start} – ${end}`;
+  if (start) return start;
+  if (end) return end;
+  return undefined;
+}
+
 export async function searchRestaurants(
   params: RestaurantSearchToolInput,
 ): Promise<RestaurantSearchToolOutput> {
@@ -59,12 +108,12 @@ export async function searchRestaurants(
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
       "X-Goog-FieldMask":
-        "places.id,places.displayName,places.rating,places.userRatingCount,places.priceLevel,places.formattedAddress,places.websiteUri,places.googleMapsUri",
+        "places.id,places.displayName,places.primaryTypeDisplayName,places.rating,places.userRatingCount,places.priceLevel,places.priceRange,places.formattedAddress,places.websiteUri,places.googleMapsUri",
     },
     body: JSON.stringify({
       textQuery: `${params.cuisine} restaurants in ${params.area}`,
       maxResultCount: 20,
-      languageCode: "en",
+      languageCode: params.language ?? "en",
     }),
     signal: AbortSignal.timeout(TOOL_TIMEOUT_MS),
   });
@@ -80,12 +129,15 @@ export async function searchRestaurants(
     id: place.id,
     name: place.displayName?.text ?? place.id,
     area: params.area,
-    cuisine: params.cuisine,
+    cuisine: place.primaryTypeDisplayName?.text ?? params.cuisine,
     priceLevel: parsePriceLevel(place.priceLevel),
+    displayPriceRange: formatPriceRangeFromApi(place.priceRange),
     rating: place.rating,
     userRatingCount: place.userRatingCount,
     address: place.formattedAddress,
     sourceUrl: place.googleMapsUri ?? place.websiteUri,
+    googleMapsUrl: place.googleMapsUri,
+    websiteUrl: place.websiteUri,
     source: "google_places",
   }));
 

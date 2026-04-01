@@ -6,6 +6,8 @@ export const RestaurantSearchRequestSchema = z.object({
   budget: z.number().positive().optional(),
   preferences: z.array(z.string()).optional(),
   sessionId: z.string().optional(),
+  language: z.string().optional(),
+  currency: z.string().optional(),
 });
 
 export const RecipeSearchRequestSchema = z.object({

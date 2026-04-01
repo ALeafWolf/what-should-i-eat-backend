@@ -30,12 +30,18 @@ export async function searchRestaurantsViaWeb(
     return { candidates: [], totalFound: 0 };
   }
 
+  const lang = params.language ?? "en";
+  const query =
+    lang === "zh"
+      ? `${params.area} 最好的 ${params.cuisine} 餐厅推荐`
+      : `best ${params.cuisine} restaurants in ${params.area}`;
+
   const response = await fetch(`${TAVILY_API_BASE}/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       api_key: apiKey,
-      query: `best ${params.cuisine} restaurants in ${params.area}`,
+      query,
       search_depth: "advanced",
       max_results: 10,
     }),

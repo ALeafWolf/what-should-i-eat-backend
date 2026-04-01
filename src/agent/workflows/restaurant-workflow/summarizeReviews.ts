@@ -9,18 +9,42 @@ const ReviewSummarySchema = z.object({
   recommendedDishes: z.array(z.string()).describe("Specific dishes that reviewers recommend"),
 });
 
-const NO_REVIEWS_FALLBACK: ReviewSummary = {
-  reviewSummary: "No reviews available.",
-  positives: [],
-  complaints: [],
-  recommendedDishes: [],
-};
+function getNoReviewsFallback(language?: string): ReviewSummary {
+  const reviewSummary =
+    language === "zh" ? "暂无评价。" : "No reviews available.";
+  return {
+    reviewSummary,
+    positives: [],
+    complaints: [],
+    recommendedDishes: [],
+  };
+}
+
+function getLanguageLabel(language?: string): string {
+  if (!language || language === "en") return "English";
+  if (language === "zh") return "Simplified Chinese";
+  return language;
+}
+
+function buildLanguageConstraint(language?: string): string {
+  if (!language || language === "en") return "";
+  const label = getLanguageLabel(language);
+  return `\n\nIMPORTANT: Write every string value in the JSON output (reviewSummary, each item in positives, each item in complaints, each item in recommendedDishes) in ${label}. Do not use any other language for those fields.`;
+}
+
+function summarizeFailureMessage(restaurantName: string, language?: string): string {
+  if (language === "zh") {
+    return `有评价内容，但无法为「${restaurantName}」生成摘要。`;
+  }
+  return `Reviews available but could not be summarized for ${restaurantName}.`;
+}
 
 export async function summarizeReviews(
   restaurantName: string,
   snippets: ReviewSnippet[],
+  language?: string,
 ): Promise<ReviewSummary> {
-  if (snippets.length === 0) return NO_REVIEWS_FALLBACK;
+  if (snippets.length === 0) return getNoReviewsFallback(language);
 
   const reviewTexts = snippets
     .map((s, i) => `Review ${i + 1} (Rating: ${s.rating ?? "N/A"}/5):\n${s.text}`)
@@ -28,26 +52,32 @@ export async function summarizeReviews(
 
   const structured = basicModel.withStructuredOutput(ReviewSummarySchema);
 
+  const languageInstructionShort =
+    language && language !== "en"
+      ? ` Respond in ${getLanguageLabel(language)}.`
+      : "";
+
+  const languageConstraint = buildLanguageConstraint(language);
+
   try {
     const result = await structured.invoke([
       {
         role: "system",
-        content:
-          "You are a restaurant review analyst. Extract key themes from customer reviews concisely and accurately.",
+        content: `You are a restaurant review analyst. Extract key themes from customer reviews concisely and accurately.${languageInstructionShort}`,
       },
       {
         role: "user",
         content: `Analyze these customer reviews for "${restaurantName}" and extract structured insights.
 
 Reviews:
-${reviewTexts}`,
+${reviewTexts}${languageConstraint}`,
       },
     ]);
 
     return result;
   } catch {
     return {
-      reviewSummary: `Reviews available but could not be summarized for ${restaurantName}.`,
+      reviewSummary: summarizeFailureMessage(restaurantName, language),
       positives: [],
       complaints: [],
       recommendedDishes: [],

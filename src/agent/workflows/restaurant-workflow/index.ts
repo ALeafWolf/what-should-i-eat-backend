@@ -37,6 +37,7 @@ export async function runRestaurantWorkflow(
         cuisine: normalized.cuisine,
         budget: normalized.budget,
         preferences: normalized.preferences,
+        language: normalized.language,
       });
       candidates = searchResult.candidates;
 
@@ -98,7 +99,7 @@ export async function runRestaurantWorkflow(
           const reviewResult = reviewResults[idx]!;
           const snippets =
             reviewResult.status === "fulfilled" ? reviewResult.value.snippets : [];
-          return summarizeReviews(candidate.name, snippets).then((summary) => ({
+          return summarizeReviews(candidate.name, snippets, normalized.language).then((summary) => ({
             id: candidate.id,
             snippets,
             summary,

@@ -2,6 +2,12 @@ import { z } from "zod";
 
 export const ConfidenceSchema = z.enum(["high", "medium", "low"]);
 
+export const RestaurantSourceSchema = z.object({
+  type: z.string(),
+  url: z.string().url(),
+  name: z.string(),
+});
+
 export const RestaurantResultSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -14,6 +20,8 @@ export const RestaurantResultSchema = z.object({
   recommendedDishes: z.array(z.string()),
   sourceCount: z.number().int().nonnegative(),
   confidence: ConfidenceSchema,
+  googleMapsUrl: z.string().url().optional(),
+  sources: z.array(RestaurantSourceSchema).optional(),
 });
 
 export const RestaurantResponseSchema = z.object({

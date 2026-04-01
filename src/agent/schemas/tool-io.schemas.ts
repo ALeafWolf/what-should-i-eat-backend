@@ -7,6 +7,7 @@ export const RestaurantSearchToolInputSchema = z.object({
   cuisine: z.string(),
   budget: z.number().positive().optional(),
   preferences: z.array(z.string()).optional(),
+  language: z.string().optional(),
 });
 
 export const RestaurantCandidateSchema = z.object({
@@ -14,11 +15,14 @@ export const RestaurantCandidateSchema = z.object({
   name: z.string(),
   area: z.string(),
   cuisine: z.string(),
+  displayPriceRange: z.string().optional(),
   priceLevel: z.number().int().min(1).max(4).optional(),
   rating: z.number().min(0).max(5).optional(),
   userRatingCount: z.number().int().nonnegative().optional(),
   address: z.string().optional(),
   sourceUrl: z.string().url().optional(),
+  googleMapsUrl: z.string().url().optional(),
+  websiteUrl: z.string().url().optional(),
   source: z.enum(["google_places", "web_search"]),
 });
 

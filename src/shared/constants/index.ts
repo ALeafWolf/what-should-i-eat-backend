@@ -22,3 +22,17 @@ export const PRICE_LEVEL_MAP: Record<number, string> = {
   3: "$$$",
   4: "$$$$",
 };
+
+/** Maps a currency's budget amount to a Google price level (1-4). */
+export const CURRENCY_PRICE_LEVEL_DIVISORS: Record<string, number> = {
+  JPY: 1000,
+  CNY: 50,
+  USD: 15,
+  CAD: 15,
+  EUR: 15,
+  GBP: 12,
+  KRW: 10000,
+  HKD: 100,
+  AUD: 20,
+  SGD: 20,
+};

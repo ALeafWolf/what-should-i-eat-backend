@@ -7,6 +7,7 @@ import type {
 import type {
   RestaurantResultSchema,
   RestaurantResponseSchema,
+  RestaurantSourceSchema,
   RecipeResultSchema,
   RecipeResponseSchema,
   ChatResponseSchema,
@@ -35,6 +36,7 @@ export type ChatRequest = z.infer<typeof ChatRequestSchema>;
 // --- Response types ---
 export type Confidence = z.infer<typeof ConfidenceSchema>;
 export type Difficulty = z.infer<typeof DifficultySchema>;
+export type RestaurantSource = z.infer<typeof RestaurantSourceSchema>;
 export type RestaurantResult = z.infer<typeof RestaurantResultSchema>;
 export type RestaurantResponse = z.infer<typeof RestaurantResponseSchema>;
 export type RecipeResult = z.infer<typeof RecipeResultSchema>;
@@ -67,6 +69,8 @@ export interface NormalizedRestaurantQuery {
   budget: number | undefined;
   preferences: string[];
   sessionId: string | undefined;
+  language: string | undefined;
+  currency: string | undefined;
 }
 
 export interface NormalizedRecipeQuery {

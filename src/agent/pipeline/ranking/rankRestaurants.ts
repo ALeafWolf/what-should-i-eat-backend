@@ -5,7 +5,7 @@ import type {
   ReviewSnippet,
   ReviewSummary,
 } from "../../../shared/types/index.js";
-import { PRICE_LEVEL_MAP } from "../../../shared/constants/index.js";
+import { PRICE_LEVEL_MAP, CURRENCY_PRICE_LEVEL_DIVISORS } from "../../../shared/constants/index.js";
 
 export interface RestaurantReviewData {
   snippets: ReviewSnippet[];
@@ -26,8 +26,10 @@ export function rankRestaurants(
   query: NormalizedRestaurantQuery,
   reviewData: Map<string, RestaurantReviewData> = new Map(),
 ): RankedRestaurant[] {
+  const currency = query.currency ?? "JPY";
+  const divisor = CURRENCY_PRICE_LEVEL_DIVISORS[currency] ?? CURRENCY_PRICE_LEVEL_DIVISORS["JPY"]!;
   const budgetPriceLevel =
-    query.budget !== undefined ? Math.ceil(query.budget / 100) : undefined;
+    query.budget !== undefined ? Math.ceil(query.budget / divisor) : undefined;
 
   const filtered =
     budgetPriceLevel !== undefined

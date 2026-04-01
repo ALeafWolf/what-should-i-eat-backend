@@ -1,4 +1,4 @@
-import type { RankedRestaurant, RestaurantResponse, RestaurantResult } from "../../../shared/types/index.js";
+import type { RankedRestaurant, RestaurantResponse, RestaurantResult, RestaurantSource } from "../../../shared/types/index.js";
 
 function buildFinalRecommendation(top: RankedRestaurant[]): string {
   if (top.length === 0) return "No restaurants found matching your criteria.";
@@ -22,19 +22,38 @@ function buildFinalRecommendation(top: RankedRestaurant[]): string {
   return `Top picks for ${best.cuisine} cuisine in ${best.area}: ${picks}. ${best.name} leads with the highest score.${dishes}`;
 }
 
+function buildSources(r: RankedRestaurant): RestaurantSource[] {
+  const sources: RestaurantSource[] = [];
+  if (r.googleMapsUrl) {
+    sources.push({ type: "google_maps", url: r.googleMapsUrl, name: "Google Maps" });
+  }
+  if (r.websiteUrl) {
+    let domain: string;
+    try {
+      domain = new URL(r.websiteUrl).hostname.replace(/^www\./, "");
+    } catch {
+      domain = r.websiteUrl;
+    }
+    sources.push({ type: "website", url: r.websiteUrl, name: domain });
+  }
+  return sources;
+}
+
 export function buildRestaurantResponse(ranked: RankedRestaurant[]): RestaurantResponse {
   const restaurants: RestaurantResult[] = ranked.map((r) => ({
     id: r.id,
     name: r.name,
     area: r.area,
     cuisine: r.cuisine,
-    priceRange: r.priceRange ?? "$$",
+    priceRange: r.displayPriceRange ?? r.priceRange ?? "$$",
     reviewSummary: r.reviewSummary,
     positives: r.positives,
     complaints: r.complaints,
     recommendedDishes: r.recommendedDishes,
     sourceCount: r.reviewSnippets.length,
     confidence: r.confidence,
+    googleMapsUrl: r.googleMapsUrl,
+    sources: buildSources(r),
   }));
 
   const finalRecommendation = buildFinalRecommendation(ranked.slice(0, 3));
