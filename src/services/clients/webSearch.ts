@@ -1,96 +1,105 @@
-import type { RestaurantCandidate, RestaurantSearchToolInput, RestaurantSearchToolOutput, RecipeCandidate, RecipeSearchToolInput, RecipeSearchToolOutput } from "../../shared/types/index.js";
+import type {
+  RestaurantCandidate,
+  RestaurantSearchToolInput,
+  RestaurantSearchToolOutput,
+  RecipeCandidate,
+  RecipeSearchToolInput,
+  RecipeSearchToolOutput,
+} from "../../shared/types/index.js";
+import { TOOL_TIMEOUT_MS } from "../../shared/constants/index.js";
 
 const TAVILY_API_BASE = "https://api.tavily.com";
 
-function getApiKey(): string {
-  const key = process.env["WEB_SEARCH_API_KEY"];
-  if (!key) {
-    throw new Error("WEB_SEARCH_API_KEY environment variable is not set");
-  }
-  return key;
+interface TavilySearchResult {
+  title: string;
+  url: string;
+  content?: string;
+  score?: number;
 }
 
-/**
- * Searches for restaurants using the web search API (Tavily/SerpAPI).
- * Used as a fallback or complement to Google Places.
- * Phase 2: replace mock data with real Tavily API calls.
- */
+interface TavilySearchResponse {
+  results?: TavilySearchResult[];
+  answer?: string;
+}
+
 export async function searchRestaurantsViaWeb(
   params: RestaurantSearchToolInput,
 ): Promise<RestaurantSearchToolOutput> {
-  // TODO: Phase 2 - implement real Tavily search API call
-  // Reference: https://docs.tavily.com/docs/tavily-api/search
-  //
-  // Real implementation:
-  //   POST ${TAVILY_API_BASE}/search
-  //   Headers: { "Content-Type": "application/json" }
-  //   Body: {
-  //     api_key: getApiKey(),
-  //     query: `best ${params.cuisine} restaurants in ${params.area}`,
-  //     search_depth: "advanced",
-  //     max_results: 10,
-  //   }
+  const apiKey = process.env["WEB_SEARCH_API_KEY"];
+  if (!apiKey) {
+    return { candidates: [], totalFound: 0 };
+  }
 
-  void getApiKey;
-  void TAVILY_API_BASE;
+  const response = await fetch(`${TAVILY_API_BASE}/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: apiKey,
+      query: `best ${params.cuisine} restaurants in ${params.area}`,
+      search_depth: "advanced",
+      max_results: 10,
+    }),
+    signal: AbortSignal.timeout(TOOL_TIMEOUT_MS),
+  });
 
-  const mockCandidates: RestaurantCandidate[] = [
-    {
-      id: "mock-ws-001",
-      name: "Web Search Mock Restaurant",
-      area: params.area,
-      cuisine: params.cuisine,
-      priceLevel: 2,
-      rating: 4.0,
-      userRatingCount: 42,
-      address: `789 Search Result Blvd, ${params.area}`,
-      sourceUrl: "https://www.example-review-site.com/mock-restaurant",
-      source: "web_search",
-    },
-  ];
+  if (!response.ok) {
+    throw new Error(`Tavily web search failed: ${response.status} ${response.statusText}`);
+  }
 
-  return {
-    candidates: mockCandidates,
-    totalFound: mockCandidates.length,
-  };
+  const data = (await response.json()) as TavilySearchResponse;
+  const results = data.results ?? [];
+
+  const candidates: RestaurantCandidate[] = results.map((result, index) => ({
+    id: `ws-${index}-${Date.now()}`,
+    name: result.title,
+    area: params.area,
+    cuisine: params.cuisine,
+    priceLevel: undefined,
+    rating: undefined,
+    userRatingCount: undefined,
+    address: undefined,
+    sourceUrl: result.url,
+    source: "web_search",
+  }));
+
+  return { candidates, totalFound: candidates.length };
 }
 
-/**
- * Searches for Chinese recipes using the web search API (Tavily/SerpAPI).
- * Phase 6: replace mock data with real Tavily API calls targeting recipe sites.
- */
 export async function searchRecipesViaWeb(
   params: RecipeSearchToolInput,
 ): Promise<RecipeSearchToolOutput> {
-  // TODO: Phase 6 - implement real Tavily search API call for recipe sources
-  // Target sites: xiachufang.com, meishijie.com, xiangha.com, douguo.com
-  //
-  // Real implementation:
-  //   POST ${TAVILY_API_BASE}/search
-  //   Body: {
-  //     api_key: getApiKey(),
-  //     query: `${params.ingredients.join(" ")} 食谱 菜谱`,
-  //     include_domains: ["xiachufang.com", "meishijie.com", "xiangha.com", "douguo.com"],
-  //     max_results: params.maxResults,
-  //   }
+  const apiKey = process.env["WEB_SEARCH_API_KEY"];
+  if (!apiKey) {
+    return { candidates: [], totalFound: 0 };
+  }
 
-  void getApiKey;
+  const response = await fetch(`${TAVILY_API_BASE}/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: apiKey,
+      query: `${params.ingredients.join(" ")} 食谱 菜谱`,
+      include_domains: ["xiachufang.com", "meishijie.com", "xiangha.com", "douguo.com"],
+      max_results: params.maxResults,
+    }),
+    signal: AbortSignal.timeout(TOOL_TIMEOUT_MS),
+  });
 
-  const ingredientList = params.ingredients.join(", ");
+  if (!response.ok) {
+    throw new Error(`Tavily recipe search failed: ${response.status} ${response.statusText}`);
+  }
 
-  const mockCandidates: RecipeCandidate[] = [
-    {
-      name: `Mock Recipe with ${ingredientList}`,
-      sourceUrl: "https://www.xiachufang.com/recipe/mock-001/",
-      source: "xiachufang.com",
-      snippet: `A delicious recipe using ${ingredientList}. Easy to prepare and very flavorful.`,
-      estimatedTime: "30 minutes",
-      difficulty: "easy",
-    },
-  ];
+  const data = (await response.json()) as TavilySearchResponse;
+  const results = data.results ?? [];
 
-  return {
-    candidates: mockCandidates,
-    totalFound: mockCandidates.length,
-  };
+  const candidates: RecipeCandidate[] = results.map((result) => ({
+    name: result.title,
+    sourceUrl: result.url,
+    source: new URL(result.url).hostname,
+    snippet: result.content?.slice(0, 300),
+    estimatedTime: undefined,
+    difficulty: undefined,
+  }));
+
+  return { candidates, totalFound: candidates.length };
 }

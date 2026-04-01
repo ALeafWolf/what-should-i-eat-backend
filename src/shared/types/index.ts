@@ -54,6 +54,11 @@ export type RecipeSearchToolOutput = z.infer<typeof RecipeSearchToolOutputSchema
 export type WebPageExtractToolInput = z.infer<typeof WebPageExtractToolInputSchema>;
 export type WebPageExtractToolOutput = z.infer<typeof WebPageExtractToolOutputSchema>;
 
+// --- Workflow emitter ---
+import type { SseEvent } from "../../agent/schemas/sse.schemas.js";
+export type { SseEvent };
+export type WorkflowEmitter = (event: SseEvent) => void;
+
 // --- Intermediate pipeline types ---
 
 export interface NormalizedRestaurantQuery {
@@ -71,6 +76,13 @@ export interface NormalizedRecipeQuery {
   difficulty: Difficulty | undefined;
   servings: number | undefined;
   sessionId: string | undefined;
+}
+
+export interface ReviewSummary {
+  reviewSummary: string;
+  positives: string[];
+  complaints: string[];
+  recommendedDishes: string[];
 }
 
 export interface RankedRestaurant extends RestaurantCandidate {
