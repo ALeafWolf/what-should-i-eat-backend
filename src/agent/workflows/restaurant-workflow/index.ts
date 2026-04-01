@@ -54,9 +54,15 @@ export async function runRestaurantWorkflow(
 
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
-    // 3. Dedup merged candidates
+    // 3. Dedup merged candidates and drop any unmatched web-search page titles.
+    // Web-search results whose names didn't match a Google Places entry are
+    // article/list titles (e.g. "Best Thai in GTA – Page 2"), not restaurants.
+    // Candidates that did match a Google Places entry were already replaced by
+    // the Google Places version during dedup, so this filter is safe.
     emit({ type: "status", message: "Deduplicating candidates..." });
-    const deduped = dedupRestaurants(candidates);
+    const deduped = dedupRestaurants(candidates).filter(
+      (c) => c.source !== "web_search",
+    );
 
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 

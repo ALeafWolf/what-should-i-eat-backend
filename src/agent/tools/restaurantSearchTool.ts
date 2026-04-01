@@ -4,19 +4,25 @@ import { searchRestaurants } from "../../services/clients/googlePlaces.js";
 import { searchRestaurantsViaWeb } from "../../services/clients/webSearch.js";
 import type { RestaurantSearchToolInput, RestaurantSearchToolOutput } from "../../shared/types/index.js";
 
+const GOOGLE_PLACES_SUFFICIENT_THRESHOLD = 5;
+
 export async function runRestaurantSearch(
   input: RestaurantSearchToolInput,
 ): Promise<RestaurantSearchToolOutput> {
-  const [googleResult, webResult] = await Promise.allSettled([
-    searchRestaurants(input),
-    searchRestaurantsViaWeb(input),
-  ]);
+  // Run Google Places first. Only fall back to web search when it returns
+  // fewer than GOOGLE_PLACES_SUFFICIENT_THRESHOLD candidates, avoiding
+  // Tavily API calls (and junk page-title candidates) when unnecessary.
+  const googleResult = await searchRestaurants(input).catch(() => null);
+  const googleCandidates = googleResult?.candidates ?? [];
 
-  const candidates = [
-    ...(googleResult.status === "fulfilled" ? googleResult.value.candidates : []),
-    ...(webResult.status === "fulfilled" ? webResult.value.candidates : []),
-  ];
+  if (googleCandidates.length >= GOOGLE_PLACES_SUFFICIENT_THRESHOLD) {
+    return { candidates: googleCandidates, totalFound: googleCandidates.length };
+  }
 
+  const webResult = await searchRestaurantsViaWeb(input).catch(() => null);
+  const webCandidates = webResult?.candidates ?? [];
+
+  const candidates = [...googleCandidates, ...webCandidates];
   return { candidates, totalFound: candidates.length };
 }
 
