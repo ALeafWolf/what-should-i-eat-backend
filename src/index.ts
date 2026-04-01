@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import apiRoutes from "./http/routes/index.js";
 import { errorHandler } from "./http/middleware/errorHandler.js";
+import { requestLogger } from "./http/middleware/requestLogger.js";
 import { DEFAULT_PORT } from "./shared/constants/index.js";
 
 const app = express();
@@ -11,6 +12,7 @@ const port = Number(process.env["PORT"] ?? DEFAULT_PORT);
 app.use(cors());
 app.use(express.json());
 
+app.use(requestLogger);
 app.use("/api", apiRoutes);
 
 app.use(errorHandler);
