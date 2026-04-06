@@ -19,15 +19,30 @@ export async function runRestaurantWorkflow(
   emit: WorkflowEmitter,
   signal?: AbortSignal,
 ): Promise<RestaurantResponse> {
+  let activeStepId: string | null = null;
+
+  function startStep(stepId: string, label: string) {
+    emit({ type: "step_start", stepId, label });
+    activeStepId = stepId;
+  }
+
+  function endStep(stepId: string) {
+    emit({ type: "step_done", stepId });
+    if (activeStepId === stepId) {
+      activeStepId = null;
+    }
+  }
+
   try {
     // 1. Normalize query
-    emit({ type: "status", message: "Normalizing query..." });
+    startStep("normalize", "Normalizing query");
     const normalized = normalizeRestaurantQuery(input);
+    endStep("normalize");
 
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
     // 2. Search (Google Places + web search in parallel, with fallback)
-    emit({ type: "status", message: "Searching restaurants..." });
+    startStep("search", "Searching restaurants");
     let candidates: RestaurantCandidate[];
     let webSearchFailed = false;
 
@@ -49,6 +64,8 @@ export async function runRestaurantWorkflow(
       webSearchFailed = true;
     }
 
+    endStep("search");
+
     if (webSearchFailed) {
       emit({ type: "warning", message: "Web search unavailable, using Google Places only" });
     }
@@ -60,15 +77,21 @@ export async function runRestaurantWorkflow(
     // article/list titles (e.g. "Best Thai in GTA – Page 2"), not restaurants.
     // Candidates that did match a Google Places entry were already replaced by
     // the Google Places version during dedup, so this filter is safe.
-    emit({ type: "status", message: "Deduplicating candidates..." });
+    startStep("dedup", "Deduplicating results");
     const deduped = dedupRestaurants(candidates).filter(
       (c) => c.source !== "web_search",
     );
+    endStep("dedup");
 
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
     // 4 & 5. Fetch reviews and summarize in batches (capped concurrency)
-    emit({ type: "status", message: `Fetching reviews for ${deduped.length} restaurants...` });
+    startStep(
+      "reviews",
+      deduped.length
+        ? `Fetching & summarizing reviews (${deduped.length} restaurants)`
+        : "Fetching & summarizing reviews",
+    );
     const reviewData = new Map<string, RestaurantReviewData>();
 
     for (let i = 0; i < deduped.length; i += MAX_CONCURRENT_REVIEWS) {
@@ -91,8 +114,6 @@ export async function runRestaurantWorkflow(
           emit({ type: "warning", message: `Reviews unavailable for ${batch[j]!.name}` });
         }
       }
-
-      emit({ type: "status", message: "Summarizing reviews..." });
 
       const summaryResults = await Promise.allSettled(
         batch.map((candidate, idx) => {
@@ -120,11 +141,14 @@ export async function runRestaurantWorkflow(
       }
     }
 
+    endStep("reviews");
+
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
     // 6. Rank
-    emit({ type: "status", message: "Ranking results..." });
+    startStep("rank", "Ranking results");
     const ranked = rankRestaurants(deduped, normalized, reviewData);
+    endStep("rank");
 
     // 7. Build and return response
     const response = buildRestaurantResponse(ranked);
@@ -135,6 +159,9 @@ export async function runRestaurantWorkflow(
       throw err;
     }
     const message = err instanceof Error ? err.message : String(err);
+    if (activeStepId) {
+      emit({ type: "step_error", stepId: activeStepId, message });
+    }
     emit({ type: "error", message, code: "WORKFLOW_ERROR" });
     throw err;
   }

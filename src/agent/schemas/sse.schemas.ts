@@ -26,12 +26,32 @@ export const SseErrorEventSchema = z.object({
   code: z.string(),
 });
 
+export const SseStepStartEventSchema = z.object({
+  type: z.literal("step_start"),
+  stepId: z.string(),
+  label: z.string(),
+});
+
+export const SseStepDoneEventSchema = z.object({
+  type: z.literal("step_done"),
+  stepId: z.string(),
+});
+
+export const SseStepErrorEventSchema = z.object({
+  type: z.literal("step_error"),
+  stepId: z.string(),
+  message: z.string(),
+});
+
 export const SseEventSchema = z.discriminatedUnion("type", [
   SseStatusEventSchema,
   SsePartialEventSchema,
   SseWarningEventSchema,
   SseDoneEventSchema,
   SseErrorEventSchema,
+  SseStepStartEventSchema,
+  SseStepDoneEventSchema,
+  SseStepErrorEventSchema,
 ]);
 
 export type SseEvent = z.infer<typeof SseEventSchema>;
@@ -40,3 +60,6 @@ export type SsePartialEvent = z.infer<typeof SsePartialEventSchema>;
 export type SseWarningEvent = z.infer<typeof SseWarningEventSchema>;
 export type SseDoneEvent = z.infer<typeof SseDoneEventSchema>;
 export type SseErrorEvent = z.infer<typeof SseErrorEventSchema>;
+export type SseStepStartEvent = z.infer<typeof SseStepStartEventSchema>;
+export type SseStepDoneEvent = z.infer<typeof SseStepDoneEventSchema>;
+export type SseStepErrorEvent = z.infer<typeof SseStepErrorEventSchema>;
