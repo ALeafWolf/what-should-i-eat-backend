@@ -27,6 +27,12 @@ import type {
   WebPageExtractToolInputSchema,
   WebPageExtractToolOutputSchema,
 } from "../../agent/schemas/tool-io.schemas.js";
+export type {
+  SessionData,
+  ConversationTurn,
+  RestaurantResultSummary,
+  SessionRestaurantQuery,
+} from "../../agent/schemas/session.schemas.js";
 
 // --- Request types ---
 export type RestaurantSearchRequest = z.infer<typeof RestaurantSearchRequestSchema>;

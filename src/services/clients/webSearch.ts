@@ -6,7 +6,13 @@ import type {
   RecipeSearchToolInput,
   RecipeSearchToolOutput,
 } from "../../shared/types/index.js";
-import { TOOL_TIMEOUT_MS } from "../../shared/constants/index.js";
+import { TOOL_TIMEOUT_MS, MAX_FOOD_QUESTION_RESULTS } from "../../shared/constants/index.js";
+
+export interface FoodSearchResult {
+  title: string;
+  url: string;
+  content: string;
+}
 
 const TAVILY_API_BASE = "https://api.tavily.com";
 
@@ -69,6 +75,41 @@ export async function searchRestaurantsViaWeb(
   }));
 
   return { candidates, totalFound: candidates.length };
+}
+
+export async function searchFoodQuestion(
+  question: string,
+  language: string,
+): Promise<FoodSearchResult[]> {
+  const apiKey = process.env["WEB_SEARCH_API_KEY"];
+  if (!apiKey) {
+    return [];
+  }
+
+  const query = language === "zh" ? `${question} 食物 营养 烹饪` : question;
+
+  const response = await fetch(`${TAVILY_API_BASE}/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: apiKey,
+      query,
+      search_depth: "basic",
+      max_results: MAX_FOOD_QUESTION_RESULTS,
+    }),
+    signal: AbortSignal.timeout(TOOL_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Tavily food search failed: ${response.status} ${response.statusText}`);
+  }
+
+  const data = (await response.json()) as TavilySearchResponse;
+  return (data.results ?? []).map((r) => ({
+    title: r.title,
+    url: r.url,
+    content: r.content?.slice(0, 400) ?? "",
+  }));
 }
 
 export async function searchRecipesViaWeb(

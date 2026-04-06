@@ -2,6 +2,18 @@ export const DEFAULT_PORT = 3001;
 
 export const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
+export const SESSION_SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+export const MAX_CONVERSATION_TURNS = 10;
+
+export const MAX_CONVERSATION_TURNS_FOR_CLASSIFICATION = 5;
+
+export const MAX_CHAT_REQUESTS_PER_MINUTE = 20;
+
+export const MAX_FOOD_QUESTION_RESULTS = 5;
+
+export const MAX_FOOD_ANSWER_TOKENS = 500;
+
 export const MAX_TOOL_CALLS_PER_REQUEST = 10;
 
 export const MAX_REVIEW_SNIPPETS_PER_RESTAURANT = 10;

@@ -43,6 +43,19 @@ export const SseStepErrorEventSchema = z.object({
   message: z.string(),
 });
 
+export const SseSourceSchema = z.object({
+  title: z.string(),
+  url: z.string(),
+});
+
+export const SseChatMessageEventSchema = z.object({
+  type: z.literal("chat_message"),
+  message: z.string(),
+  intent: z.enum(["RESTAURANT_SEARCH", "RECIPE_SEARCH", "FOOD_QUESTION", "OTHER"]).optional(),
+  sources: z.array(SseSourceSchema).optional(),
+  sessionId: z.string(),
+});
+
 export const SseEventSchema = z.discriminatedUnion("type", [
   SseStatusEventSchema,
   SsePartialEventSchema,
@@ -52,6 +65,7 @@ export const SseEventSchema = z.discriminatedUnion("type", [
   SseStepStartEventSchema,
   SseStepDoneEventSchema,
   SseStepErrorEventSchema,
+  SseChatMessageEventSchema,
 ]);
 
 export type SseEvent = z.infer<typeof SseEventSchema>;
@@ -63,3 +77,5 @@ export type SseErrorEvent = z.infer<typeof SseErrorEventSchema>;
 export type SseStepStartEvent = z.infer<typeof SseStepStartEventSchema>;
 export type SseStepDoneEvent = z.infer<typeof SseStepDoneEventSchema>;
 export type SseStepErrorEvent = z.infer<typeof SseStepErrorEventSchema>;
+export type SseChatMessageEvent = z.infer<typeof SseChatMessageEventSchema>;
+export type SseSource = z.infer<typeof SseSourceSchema>;

@@ -17,3 +17,11 @@ export const advancedModel = new ChatOpenAI({
   temperature: 0,
   apiKey: requireEnv("OPENAI_API_KEY"),
 });
+
+// Lightweight model for intent classification and routing.
+// Falls back to basicModel if ROUTING_MODEL env var is not configured.
+export const routingModel = new ChatOpenAI({
+  model: process.env["ROUTING_MODEL"] ?? requireEnv("BASIC_MODEL"),
+  temperature: 0,
+  apiKey: requireEnv("OPENAI_API_KEY"),
+});
