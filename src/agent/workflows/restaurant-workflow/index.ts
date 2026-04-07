@@ -1,3 +1,4 @@
+import { traceable } from "langsmith/traceable";
 import type {
   RestaurantSearchRequest,
   RestaurantResponse,
@@ -14,7 +15,7 @@ import { summarizeReviews } from "./summarizeReviews.js";
 
 const MAX_CONCURRENT_REVIEWS = 5;
 
-export async function runRestaurantWorkflow(
+async function _runRestaurantWorkflow(
   input: RestaurantSearchRequest,
   emit: WorkflowEmitter,
   signal?: AbortSignal,
@@ -166,3 +167,8 @@ export async function runRestaurantWorkflow(
     throw err;
   }
 }
+
+export const runRestaurantWorkflow = traceable(_runRestaurantWorkflow, {
+  name: "runRestaurantWorkflow",
+  run_type: "chain",
+});

@@ -1,4 +1,5 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
+import { traceable } from "langsmith/traceable";
 import { RestaurantSearchToolInputSchema } from "../schemas/tool-io.schemas.js";
 import { searchRestaurants } from "../../services/clients/googlePlaces.js";
 import { searchRestaurantsViaWeb } from "../../services/clients/webSearch.js";
@@ -6,7 +7,7 @@ import type { RestaurantSearchToolInput, RestaurantSearchToolOutput } from "../.
 
 const GOOGLE_PLACES_SUFFICIENT_THRESHOLD = 5;
 
-export async function runRestaurantSearch(
+async function _runRestaurantSearch(
   input: RestaurantSearchToolInput,
 ): Promise<RestaurantSearchToolOutput> {
   // Run Google Places first. Only fall back to web search when it returns
@@ -25,6 +26,11 @@ export async function runRestaurantSearch(
   const candidates = [...googleCandidates, ...webCandidates];
   return { candidates, totalFound: candidates.length };
 }
+
+export const runRestaurantSearch = traceable(_runRestaurantSearch, {
+  name: "restaurantSearch",
+  run_type: "tool",
+});
 
 export const restaurantSearchTool = new DynamicStructuredTool({
   name: "restaurantSearch",

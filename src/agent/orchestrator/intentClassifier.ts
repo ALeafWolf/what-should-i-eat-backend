@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { traceable } from "langsmith/traceable";
 import { routingModel } from "../models/index.js";
 import type { SessionData } from "../../shared/types/index.js";
 import { MAX_CONVERSATION_TURNS_FOR_CLASSIFICATION } from "../../shared/constants/index.js";
@@ -24,7 +25,7 @@ export const IntentResultSchema = z.object({
 
 export type IntentResult = z.infer<typeof IntentResultSchema>;
 
-export async function classifyIntent(
+async function _classifyIntent(
   message: string,
   session: SessionData,
 ): Promise<IntentResult> {
@@ -85,3 +86,8 @@ Detect the language of the user input and return its BCP 47 code (e.g. "en", "zh
     { role: "user", content: message },
   ]);
 }
+
+export const classifyIntent = traceable(_classifyIntent, {
+  name: "classifyIntent",
+  run_type: "chain",
+});

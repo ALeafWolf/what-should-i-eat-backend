@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { traceable } from "langsmith/traceable";
 import { basicModel } from "../../models/index.js";
 import { searchFoodQuestion } from "../../../services/clients/webSearch.js";
 import { MAX_FOOD_ANSWER_TOKENS } from "../../../shared/constants/index.js";
@@ -19,7 +20,7 @@ const FoodAnswerSchema = z.object({
 
 export type FoodAnswer = z.infer<typeof FoodAnswerSchema>;
 
-export async function answerFoodQuestion(
+async function _answerFoodQuestion(
   question: string,
   language: string,
 ): Promise<FoodAnswer> {
@@ -56,3 +57,8 @@ ${sourcesText}`,
     ],
   );
 }
+
+export const answerFoodQuestion = traceable(_answerFoodQuestion, {
+  name: "answerFoodQuestion",
+  run_type: "chain",
+});

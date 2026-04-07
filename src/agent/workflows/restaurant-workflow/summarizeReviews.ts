@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { traceable } from "langsmith/traceable";
 import { basicModel } from "../../models/index.js";
 import type { ReviewSnippet, ReviewSummary } from "../../../shared/types/index.js";
 
@@ -39,7 +40,7 @@ function summarizeFailureMessage(restaurantName: string, language?: string): str
   return `Reviews available but could not be summarized for ${restaurantName}.`;
 }
 
-export async function summarizeReviews(
+async function _summarizeReviews(
   restaurantName: string,
   snippets: ReviewSnippet[],
   language?: string,
@@ -84,3 +85,8 @@ ${reviewTexts}${languageConstraint}`,
     };
   }
 }
+
+export const summarizeReviews = traceable(_summarizeReviews, {
+  name: "summarizeReviews",
+  run_type: "chain",
+});

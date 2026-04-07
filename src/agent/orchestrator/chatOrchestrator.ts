@@ -1,3 +1,4 @@
+import { traceable } from "langsmith/traceable";
 import type { WorkflowEmitter, SessionData } from "../../shared/types/index.js";
 import { classifyIntent } from "./intentClassifier.js";
 import { answerFoodQuestion } from "./handlers/foodQuestionHandler.js";
@@ -30,7 +31,7 @@ function makeWrappedEmit(emit: WorkflowEmitter): WorkflowEmitter {
   };
 }
 
-async function executeRestaurantSearch(
+async function _executeRestaurantSearch(
   params: {
     area: string;
     cuisine: string;
@@ -69,7 +70,12 @@ async function executeRestaurantSearch(
   return "";
 }
 
-export async function runChatOrchestration(
+const executeRestaurantSearch = traceable(_executeRestaurantSearch, {
+  name: "executeRestaurantSearch",
+  run_type: "chain",
+});
+
+async function _runChatOrchestration(
   message: string,
   session: SessionData,
   emit: WorkflowEmitter,
@@ -214,3 +220,8 @@ export async function runChatOrchestration(
 
   return session;
 }
+
+export const runChatOrchestration = traceable(_runChatOrchestration, {
+  name: "runChatOrchestration",
+  run_type: "chain",
+});
