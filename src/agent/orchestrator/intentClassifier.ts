@@ -5,15 +5,23 @@ import type { SessionData } from "../../shared/types/index.js";
 import { MAX_CONVERSATION_TURNS_FOR_CLASSIFICATION } from "../../shared/constants/index.js";
 
 export const IntentResultSchema = z.object({
-  intent: z.enum(["RESTAURANT_SEARCH", "RECIPE_SEARCH", "FOOD_QUESTION", "OTHER"]),
+  intent: z.enum([
+    "RESTAURANT_SEARCH",
+    "RECIPE_SEARCH",
+    "FOOD_QUESTION",
+    "FUNCTION_INTRODUCTION",
+    "OTHER",
+  ]),
   language: z.string().describe("BCP 47 language code of the user input, e.g. 'en', 'zh', 'ja'"),
   restaurantFields: z
     .object({
-      location: z.string().nullable().describe("Area, city, or neighborhood the user wants restaurants in"),
+      location: z.string().nullable().describe("The city, neighborhood, or area the user wants restaurants in. Extract only the core location name — do NOT include proximity qualifiers like '附近', '周边', '周围', 'nearby', 'near', 'around', 'close to'. For example: '温尼伯附近' → '温尼伯', 'near Miami' → 'Miami', 'around downtown Tokyo' → 'downtown Tokyo'"),
+      locationEn: z.string().nullable().describe("The English equivalent of the location field. If location is already in English, repeat it here. If it is in another language, translate it to English. Examples: '温尼伯' → 'Winnipeg', '迈阿密' → 'Miami', '東京' → 'Tokyo', 'downtown Chicago' → 'downtown Chicago'. Return null if location is null"),
       cuisine: z.string().nullable().describe("Type of cuisine or food the user wants"),
+      cuisineEn: z.string().nullable().describe("The English equivalent of the cuisine field. If cuisine is already in English, repeat it here. If it is in another language, translate it to English. Examples: '美式烧烤' → 'American BBQ', '中餐' → 'Chinese food'. Return null if cuisine is null"),
       pricePerPerson: z.number().nullable().describe("Budget per person as a number. Return null if the user did not mention a budget — do NOT default to 0. When a budget is given without a currency, use the local currency of the location (e.g. JPY for Tokyo, CNY for Beijing, USD for New York)"),
       currency: z.string().nullable().describe("ISO 4217 currency code for pricePerPerson (e.g. 'JPY', 'CNY', 'USD'). Only populate when pricePerPerson is non-null. Infer from the location when not stated by the user. Return null if pricePerPerson is null"),
-      preferences: z.array(z.string()).nullable().describe("Extra preferences like 'outdoor seating', 'vegetarian'. Return null if the user did not mention any preferences — do NOT return an empty array"),
+      preferences: z.array(z.string()).nullable().describe("Specific, actionable preferences like 'outdoor seating', 'vegetarian', 'quiet atmosphere', 'romantic', 'family-friendly', 'parking available'. Do NOT include general quality descriptors like 'high-rated', 'good', 'popular', 'best', 'delicious', 'famous' — those are implicit in every search. Return null if the user did not mention any actionable preferences — do NOT return an empty array"),
     })
     .nullable()
     .describe("Populated only when intent is RESTAURANT_SEARCH, otherwise null"),
@@ -62,15 +70,21 @@ Classify the user input into ONE of the following categories:
    - User asks factual or general food-related questions
    - Examples: nutrition info, ingredient comparisons, cooking techniques, food history
 
-4. OTHER
+4. FUNCTION_INTRODUCTION
+   - User asks what this assistant can do, its features, or how to use it
+   - Examples: "what can you do?", "how do you work?", "what features do you have?"
+
+5. OTHER
    - Anything outside the above categories
 
 For RESTAURANT_SEARCH, extract all available fields:
-- location: area, city, or neighborhood
+- location: core city or neighborhood name only — strip proximity qualifiers like "附近", "周边", "nearby", "near", "around" (e.g. "温尼伯附近" → "温尼伯", "near Miami" → "Miami")
+- locationEn: English translation of location (e.g. "温尼伯" → "Winnipeg", "迈阿密" → "Miami"). If already in English, repeat it. Null if location is null
 - cuisine: type of cuisine or food
+- cuisineEn: English translation of cuisine (e.g. "美式烧烤" → "American BBQ", "中餐" → "Chinese food"). If already in English, repeat it. Null if cuisine is null
 - pricePerPerson: numeric budget per person. Return null if the user did not mention a budget — do NOT default to 0. When a budget is given, use the local currency of the location if no currency is stated
 - currency: ISO 4217 code (e.g. "JPY", "CNY", "USD"). Only set when pricePerPerson is non-null. Return null otherwise
-- preferences: array of extra preferences. Return null if not mentioned — do NOT return an empty array
+- preferences: array of specific, actionable preferences (e.g. "outdoor seating", "vegetarian", "quiet", "family-friendly"). Do NOT include general quality words like "high-rated", "good", "popular", "best", "delicious" — these are implicit in every search. Return null if not mentioned — do NOT return an empty array
 
 If the user refers to a prior search (e.g. "cheaper options", "something similar"), fill in missing fields from the session context below.
 

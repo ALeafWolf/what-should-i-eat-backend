@@ -6,6 +6,13 @@ function requireEnv(name: string): string {
   return val;
 }
 
+/** Short, cheap completions (e.g. capability intros). */
+export const simpleTaskModel = new ChatOpenAI({
+  model: requireEnv("SIMPLE_TASK_MODEL"),
+  temperature: 0,
+  apiKey: requireEnv("OPENAI_API_KEY"),
+});
+
 export const basicModel = new ChatOpenAI({
   model: requireEnv("BASIC_MODEL"),
   temperature: 0,

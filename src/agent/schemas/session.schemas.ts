@@ -23,7 +23,9 @@ export const SessionRestaurantQuerySchema = z.object({
 
 export const PendingRestaurantQuerySchema = z.object({
   area: z.string(),
+  areaEn: z.string().optional(),
   cuisine: z.string(),
+  cuisineEn: z.string().optional(),
   language: z.string().optional(),
 });
 

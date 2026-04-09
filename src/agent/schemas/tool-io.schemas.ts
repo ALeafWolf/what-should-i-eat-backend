@@ -4,7 +4,9 @@ import { z } from "zod";
 
 export const RestaurantSearchToolInputSchema = z.object({
   area: z.string(),
+  areaEn: z.string().optional(),
   cuisine: z.string(),
+  cuisineEn: z.string().optional(),
   budget: z.number().positive().optional(),
   preferences: z.array(z.string()).optional(),
   language: z.string().optional(),

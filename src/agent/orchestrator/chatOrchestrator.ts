@@ -2,6 +2,7 @@ import { traceable } from "langsmith/traceable";
 import type { WorkflowEmitter, SessionData } from "../../shared/types/index.js";
 import { classifyIntent } from "./intentClassifier.js";
 import { answerFoodQuestion } from "./handlers/foodQuestionHandler.js";
+import { generateIntroduction } from "./handlers/introductionHandler.js";
 import { runRestaurantWorkflow } from "../workflows/restaurant-workflow/index.js";
 import { MAX_CONVERSATION_TURNS } from "../../shared/constants/index.js";
 import type { SseEvent } from "../schemas/sse.schemas.js";
@@ -34,7 +35,9 @@ function makeWrappedEmit(emit: WorkflowEmitter): WorkflowEmitter {
 async function _executeRestaurantSearch(
   params: {
     area: string;
+    areaEn?: string;
     cuisine: string;
+    cuisineEn?: string;
     budget?: number;
     currency?: string;
     preferences?: string[];
@@ -100,7 +103,9 @@ async function _runChatOrchestration(
     assistantResponse = await executeRestaurantSearch(
       {
         area: pending.area,
+        areaEn: pending.areaEn,
         cuisine: pending.cuisine,
+        cuisineEn: pending.cuisineEn,
         budget,
         currency,
         preferences,
@@ -143,7 +148,13 @@ async function _runChatOrchestration(
 
       // Ask for optional details before searching if the user didn't provide any
       if (!userProvidedOptionals) {
-        session.pendingRestaurantQuery = { area: location, cuisine, language: intent.language };
+        session.pendingRestaurantQuery = {
+          area: location,
+          areaEn: fields?.locationEn ?? undefined,
+          cuisine,
+          cuisineEn: fields?.cuisineEn ?? undefined,
+          language: intent.language,
+        };
 
         assistantResponse =
           intent.language === "zh"
@@ -162,7 +173,9 @@ async function _runChatOrchestration(
       assistantResponse = await executeRestaurantSearch(
         {
           area: location,
+          areaEn: fields?.locationEn ?? undefined,
           cuisine,
+          cuisineEn: fields?.cuisineEn ?? undefined,
           budget,
           currency,
           preferences,
@@ -197,6 +210,25 @@ async function _runChatOrchestration(
           intent.language === "zh"
             ? "抱歉，我无法回答这个问题，请稍后再试。"
             : "Sorry, I couldn't answer that question. Please try again later.";
+        emit({ type: "chat_message", message: assistantResponse, intent: intent.intent, sessionId: session.id });
+      }
+      break;
+    }
+
+    case "FUNCTION_INTRODUCTION": {
+      try {
+        assistantResponse = await generateIntroduction(intent.language, message);
+        emit({
+          type: "chat_message",
+          message: assistantResponse,
+          intent: intent.intent,
+          sessionId: session.id,
+        });
+      } catch {
+        assistantResponse =
+          intent.language === "zh"
+            ? "我可以帮您按地区和菜系搜索餐厅、回答食物相关问题；食谱功能即将推出。"
+            : "I can help you find restaurants by area and cuisine, answer food questions, and recipe search is coming soon.";
         emit({ type: "chat_message", message: assistantResponse, intent: intent.intent, sessionId: session.id });
       }
       break;

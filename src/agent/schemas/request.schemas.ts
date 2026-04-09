@@ -2,7 +2,9 @@ import { z } from "zod";
 
 export const RestaurantSearchRequestSchema = z.object({
   area: z.string().min(1, "area is required"),
+  areaEn: z.string().optional(),
   cuisine: z.string().min(1, "cuisine is required"),
+  cuisineEn: z.string().optional(),
   budget: z.number().positive().optional(),
   preferences: z.array(z.string()).optional(),
   sessionId: z.string().optional(),

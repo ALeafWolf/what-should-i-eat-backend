@@ -51,7 +51,15 @@ export const SseSourceSchema = z.object({
 export const SseChatMessageEventSchema = z.object({
   type: z.literal("chat_message"),
   message: z.string(),
-  intent: z.enum(["RESTAURANT_SEARCH", "RECIPE_SEARCH", "FOOD_QUESTION", "OTHER"]).optional(),
+  intent: z
+    .enum([
+      "RESTAURANT_SEARCH",
+      "RECIPE_SEARCH",
+      "FOOD_QUESTION",
+      "FUNCTION_INTRODUCTION",
+      "OTHER",
+    ])
+    .optional(),
   sources: z.array(SseSourceSchema).optional(),
   sessionId: z.string(),
 });

@@ -71,7 +71,9 @@ export type WorkflowEmitter = (event: SseEvent) => void;
 
 export interface NormalizedRestaurantQuery {
   area: string;
+  areaEn: string | undefined;
   cuisine: string;
+  cuisineEn: string | undefined;
   budget: number | undefined;
   preferences: string[];
   sessionId: string | undefined;

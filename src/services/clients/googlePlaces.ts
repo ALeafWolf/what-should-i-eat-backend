@@ -21,6 +21,22 @@ interface GooglePriceRange {
   endPrice?: GoogleMoney;
 }
 
+/** https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places#AddressComponent */
+interface GoogleAddressComponent {
+  longText?: string;
+  shortText?: string;
+  types?: string[];
+  languageCode?: string;
+}
+
+/** https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places#PostalAddress */
+interface GooglePostalAddress {
+  locality?: string;
+  sublocality?: string;
+  administrativeArea?: string;
+  regionCode?: string;
+}
+
 interface GooglePlaceResult {
   id: string;
   displayName?: { text: string; languageCode: string };
@@ -30,6 +46,9 @@ interface GooglePlaceResult {
   priceLevel?: string;
   priceRange?: GooglePriceRange;
   formattedAddress?: string;
+  /** Structured city / province fields from the Places API (preferred for display). */
+  postalAddress?: GooglePostalAddress;
+  addressComponents?: GoogleAddressComponent[];
   websiteUri?: string;
   googleMapsUri?: string;
 }
@@ -97,6 +116,57 @@ function formatPriceRangeFromApi(priceRange?: GooglePriceRange): string | undefi
   return undefined;
 }
 
+function firstAddressComponent(
+  components: GoogleAddressComponent[] | undefined,
+  typeNames: string[],
+): GoogleAddressComponent | undefined {
+  if (!components?.length) return undefined;
+  for (const typeName of typeNames) {
+    const found = components.find((c) => c.types?.includes(typeName));
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/**
+ * "City, Province" from Places API (New) structured fields:
+ * postalAddress.locality + administrativeArea, with addressComponents fallback.
+ * https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places
+ */
+function areaFromPlaceStructured(place: GooglePlaceResult, fallback: string): string {
+  const postal = place.postalAddress;
+  const comps = place.addressComponents;
+
+  let locality =
+    postal?.locality?.trim() ||
+    firstAddressComponent(comps, ["locality", "postal_town"])?.longText?.trim() ||
+    firstAddressComponent(comps, ["locality", "postal_town"])?.shortText?.trim();
+
+  if (!locality && postal?.sublocality?.trim()) {
+    locality = postal.sublocality.trim();
+  }
+  if (!locality) {
+    const sub = firstAddressComponent(comps, ["sublocality", "sublocality_level_1"]);
+    locality = sub?.longText?.trim() || sub?.shortText?.trim();
+  }
+
+  const adminComp = firstAddressComponent(comps, ["administrative_area_level_1"]);
+  let province = postal?.administrativeArea?.trim();
+  if (!province) {
+    province =
+      adminComp?.shortText && /^[A-Z]{2}$/i.test(adminComp.shortText)
+        ? adminComp.shortText.toUpperCase()
+        : adminComp?.longText?.trim() || adminComp?.shortText?.trim();
+  } else if (adminComp?.shortText && /^[A-Z]{2}$/i.test(adminComp.shortText)) {
+    province = adminComp.shortText.toUpperCase();
+  }
+
+  if (locality && province) return `${locality}, ${province}`;
+  if (locality) return locality;
+  if (province) return province;
+  return fallback;
+}
+
 export async function searchRestaurants(
   params: RestaurantSearchToolInput,
 ): Promise<RestaurantSearchToolOutput> {
@@ -108,10 +178,10 @@ export async function searchRestaurants(
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
       "X-Goog-FieldMask":
-        "places.id,places.displayName,places.primaryTypeDisplayName,places.rating,places.userRatingCount,places.priceLevel,places.priceRange,places.formattedAddress,places.websiteUri,places.googleMapsUri",
+        "places.id,places.displayName,places.primaryTypeDisplayName,places.rating,places.userRatingCount,places.priceLevel,places.priceRange,places.formattedAddress,places.postalAddress,places.addressComponents,places.websiteUri,places.googleMapsUri",
     },
     body: JSON.stringify({
-      textQuery: `${params.cuisine} restaurants in ${params.area}`,
+      textQuery: `${params.cuisineEn ?? params.cuisine} restaurants in ${params.areaEn ?? params.area}`,
       maxResultCount: 20,
       languageCode: params.language ?? "en",
     }),
@@ -128,7 +198,7 @@ export async function searchRestaurants(
   const candidates: RestaurantCandidate[] = places.map((place) => ({
     id: place.id,
     name: place.displayName?.text ?? place.id,
-    area: params.area,
+    area: areaFromPlaceStructured(place, params.area),
     cuisine: place.primaryTypeDisplayName?.text ?? params.cuisine,
     priceLevel: parsePriceLevel(place.priceLevel),
     displayPriceRange: formatPriceRangeFromApi(place.priceRange),

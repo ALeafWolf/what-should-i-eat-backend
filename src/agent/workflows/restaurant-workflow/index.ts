@@ -50,7 +50,9 @@ async function _runRestaurantWorkflow(
     try {
       const searchResult = await runRestaurantSearch({
         area: normalized.area,
+        areaEn: normalized.areaEn,
         cuisine: normalized.cuisine,
+        cuisineEn: normalized.cuisineEn,
         budget: normalized.budget,
         preferences: normalized.preferences,
         language: normalized.language,
@@ -82,6 +84,7 @@ async function _runRestaurantWorkflow(
     const deduped = dedupRestaurants(candidates).filter(
       (c) => c.source !== "web_search",
     );
+
     endStep("dedup");
 
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
