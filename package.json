@@ -10,7 +10,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "eval:create-dataset": "tsx src/evals/scripts/create-dataset.ts",
+    "eval:run": "tsx src/evals/scripts/run-eval.ts"
   },
   "dependencies": {
     "@langchain/core": "^1.1.38",
